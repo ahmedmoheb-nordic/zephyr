@@ -1,0 +1,57 @@
+#
+# Common include directories and source files for bluetooth unit tests
+#
+
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${ZEPHYR_BASE}/tests/bluetooth/host/mock_host/include
+  ${ZEPHYR_BASE}/tests/bluetooth/host/common/include
+  ${ZEPHYR_BASE}/include/zephyr/net
+  ${ZEPHYR_BASE}/include/zephyr/bluetooth
+  ${ZEPHYR_BASE}/subsys/bluetooth
+  ${ZEPHYR_BASE}/subsys/bluetooth/host
+  ${ZEPHYR_BASE}/subsys/testsuite/ztest/include/zephyr
+)
+
+FILE(GLOB host_sources
+  ${ZEPHYR_BASE}/subsys/bluetooth/host/buf.c
+)
+
+FILE(GLOB mock_sources
+  ${ZEPHYR_BASE}/tests/bluetooth/host/mock_host/src/net.c
+  ${ZEPHYR_BASE}/tests/bluetooth/host/mock_host/src/iso.c
+  ${ZEPHYR_BASE}/tests/bluetooth/host/mock_host/src/hci_core.c
+  ${ZEPHYR_BASE}/tests/bluetooth/host/mock_host/src/assert.c
+  ${ZEPHYR_BASE}/tests/bluetooth/host/mock_host/src/hooks.c
+)
+
+add_definitions(-include kconfig.h)
+add_definitions(-include hooks.h)
+
+if(COMPILE_PARAM_1)
+  add_compile_definitions(${COMPILE_PARAM_1})
+endif()
+
+if(COMPILE_PARAM_2)
+  add_compile_definitions(${COMPILE_PARAM_2})
+endif()
+
+if(COMPILE_PARAM_3)
+  add_compile_definitions(${COMPILE_PARAM_3})
+endif()
+
+if(COMPILE_PARAM_4)
+  add_compile_definitions(${COMPILE_PARAM_4})
+endif()
+
+if(COMPILE_PARAM_5)
+  add_compile_definitions(${COMPILE_PARAM_5})
+endif()
+
+if(KCONFIG_OVERRIDE_FILE)
+  add_definitions(-include ${KCONFIG_OVERRIDE_FILE})
+endif()
+
+add_definitions(-include ztest.h)
+add_definitions(-include soc.h)
