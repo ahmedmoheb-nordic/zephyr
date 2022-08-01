@@ -4,18 +4,17 @@
 
 include_directories(
   ${ZEPHYR_BASE}/tests/bluetooth/host/buf
-  ${ZEPHYR_BASE}/tests/bluetooth/host/buf/mocks
 )
 
-FILE(GLOB host_module
+SET( host_module
   ${ZEPHYR_BASE}/subsys/bluetooth/host/buf.c
 )
 
-FILE(GLOB module_mocks
+SET( module_mocks
   ${ZEPHYR_BASE}/tests/bluetooth/host/buf/mocks/net_buf.c
   ${ZEPHYR_BASE}/tests/bluetooth/host/buf/mocks/iso.c
   ${ZEPHYR_BASE}/tests/bluetooth/host/buf/mocks/hci_core.c
-  ${ZEPHYR_BASE}/tests/bluetooth/host/buf/mocks/buf_help_utils.c
+  ${ZEPHYR_BASE}/tests/bluetooth/host/buf/mocks/net_buf_expects.c
 )
 
 if(COMPILE_SWITCH_PARAM)

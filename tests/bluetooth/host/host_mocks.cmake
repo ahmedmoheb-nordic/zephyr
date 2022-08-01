@@ -4,10 +4,10 @@
 
 include_directories(
   ${ZEPHYR_BASE}/subsys/bluetooth
-  ${ZEPHYR_BASE}/tests/bluetooth/host/host_mocks
+  ${ZEPHYR_BASE}/tests/bluetooth/host
 )
 
-FILE(GLOB host_mocks
+SET( host_mocks
   ${ZEPHYR_BASE}/tests/bluetooth/host/host_mocks/assert.c
 )
 

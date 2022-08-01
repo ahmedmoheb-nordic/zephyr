@@ -7,8 +7,8 @@
 #include <zephyr/zephyr.h>
 #include <zephyr/bluetooth/buf.h>
 #include "kconfig.h"
-#include "buf_help_utils.h"
-#include "assert.h"
+#include "host_mocks/assert.h"
+#include "mocks/buf_help_utils.h"
 
 /*
  *  Test passing invalid buffer type to bt_buf_get_rx()
@@ -70,8 +70,15 @@ void test_invalid_input_type_bt_buf_h4(void)
 	bt_buf_get_rx(BT_BUF_H4, Z_TIMEOUT_TICKS(1000));
 }
 
+/* Setup test variables */
+static void unit_test_setup(void)
+{
+	/* Register resets */
+	ASSERT_FFF_FAKES_LIST(RESET_FAKE);
+}
+
 ztest_register_test_suite(test_bt_buf_get_rx_invalid_input, NULL,
-			  ztest_unit_test(test_invalid_input_type_bt_buf_cmd),
-			  ztest_unit_test(test_invalid_input_type_bt_buf_acl_out),
-			  ztest_unit_test(test_invalid_input_type_bt_buf_iso_out),
-			  ztest_unit_test(test_invalid_input_type_bt_buf_h4));
+	ztest_unit_test_setup(test_invalid_input_type_bt_buf_cmd, unit_test_setup),
+	ztest_unit_test_setup(test_invalid_input_type_bt_buf_acl_out, unit_test_setup),
+	ztest_unit_test_setup(test_invalid_input_type_bt_buf_iso_out, unit_test_setup),
+	ztest_unit_test_setup(test_invalid_input_type_bt_buf_h4, unit_test_setup));

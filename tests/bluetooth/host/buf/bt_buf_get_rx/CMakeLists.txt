@@ -12,7 +12,7 @@ project(bluetooth_bt_buf_get_rx)
 
 find_package(Zephyr COMPONENTS unittest HINTS $ENV{ZEPHYR_BASE})
 
-include(${ZEPHYR_BASE}/tests/bluetooth/host/cmake.txt)
-include(${ZEPHYR_BASE}/tests/bluetooth/host/buf/cmake.txt)
+include(${ZEPHYR_BASE}/tests/bluetooth/host/host_mocks.cmake)
+include(${ZEPHYR_BASE}/tests/bluetooth/host/buf/mocks.cmake)
 
 target_sources(testbinary PRIVATE ${host_module} ${module_mocks} ${host_mocks})
