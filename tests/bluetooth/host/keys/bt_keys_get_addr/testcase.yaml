@@ -1,0 +1,8 @@
+common:
+    tags: test_framework bluetooth host
+tests:
+  bluetooth.host.bt_keys_get_addr.default:
+     type: unit
+  bluetooth.host.bt_keys_get_addr.keys_overwrite_oldest:
+     type: unit
+     extra_args: COMPILE_SWITCH_PARAM=CONFIG_BT_KEYS_OVERWRITE_OLDEST=1
