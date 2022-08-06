@@ -10,6 +10,14 @@
 #include "kconfig.h"
 #include "keys_help_utils.h"
 
+void clear_key_pool(void)
+{
+	struct bt_keys *key_pool;
+
+	key_pool = bt_keys_get_key_pool();
+	memset(key_pool, 0x00, sizeof(struct bt_keys) * CONFIG_BT_MAX_PAIRED);
+}
+
 bool check_key_pool_is_empty(void)
 {
 	int i;

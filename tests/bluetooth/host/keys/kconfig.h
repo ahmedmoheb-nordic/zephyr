@@ -8,7 +8,10 @@
 
 #define CONFIG_BT_ID_MAX 2
 #define CONFIG_BT_MAX_CONN 2
+
+#ifndef CONFIG_BT_MAX_PAIRED
 #define CONFIG_BT_MAX_PAIRED 4
+#endif
 
 /** Keys "test" IDs associated with a BT address */
 #define BT_ADDR_ID_1 (0x55)
