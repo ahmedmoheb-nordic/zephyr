@@ -1,0 +1,6 @@
+common:
+    tags: test_framework bluetooth host
+tests:
+  bluetooth.host.bt_keys_foreach_key.default:
+     type: unit
+     extra_args: COMPILE_SWITCH_PARAM=CONFIG_BT_MAX_PAIRED=7
