@@ -16,6 +16,7 @@ struct id_addr_pair {
 struct bt_keys *bt_keys_get_key_pool(void);
 
 /* keys_help_utils.c declarations */
+void clear_key_pool(void);
 bool check_key_pool_is_empty(void);
 
 /* Repeat test entries */
