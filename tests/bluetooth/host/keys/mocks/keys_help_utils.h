@@ -12,6 +12,13 @@ struct id_addr_pair {
 	bt_addr_le_t *addr;		/* Pointer to the address */
 };
 
+/* BT Key (ID, Address, type) info */
+struct id_addr_type {
+	uint8_t id;			    /*	ID */
+	bt_addr_le_t *addr;		/*	Pointer to the address	*/
+	int type;				/*	Key type */
+};
+
 /* keys.c declarations */
 struct bt_keys *bt_keys_get_key_pool(void);
 
