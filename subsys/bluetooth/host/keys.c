@@ -515,4 +515,11 @@ struct bt_keys *bt_keys_get_key_pool(void)
 {
 	return key_pool;
 }
+
+#if IS_ENABLED(CONFIG_BT_KEYS_OVERWRITE_OLDEST)
+struct bt_keys *bt_keys_get_last_keys_updated(void)
+{
+	return last_keys_updated;
+}
+#endif
 #endif

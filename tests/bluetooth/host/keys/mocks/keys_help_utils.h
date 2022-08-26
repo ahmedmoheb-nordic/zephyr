@@ -21,6 +21,9 @@ struct id_addr_type {
 
 /* keys.c declarations */
 struct bt_keys *bt_keys_get_key_pool(void);
+#if IS_ENABLED(CONFIG_BT_KEYS_OVERWRITE_OLDEST)
+struct bt_keys *bt_keys_get_last_keys_updated(void);
+#endif
 
 /* keys_help_utils.c declarations */
 void clear_key_pool(void);
