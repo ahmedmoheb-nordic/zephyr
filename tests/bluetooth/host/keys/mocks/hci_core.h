@@ -7,10 +7,9 @@
 #include <zephyr/zephyr.h>
 #include <zephyr/fff.h>
 #include <addr.h>
-#include <keys.h>
 
 /* List of fakes used by this unit tester */
-#define ID_FFF_FAKES_LIST(FAKE)        \
-		FAKE(bt_id_del)                \
+#define HCI_CORE_FFF_FAKES_LIST(FAKE)       \
+		FAKE(bt_unpair)                     \
 
-DECLARE_FAKE_VOID_FUNC(bt_id_del, struct bt_keys *);
+DECLARE_FAKE_VALUE_FUNC(int, bt_unpair, uint8_t, const bt_addr_le_t *);
