@@ -5,7 +5,16 @@
 add_library(mocks STATIC
             mocks/scan.c
             mocks/addr.c
+            mocks/rpa.c
+            mocks/adv.c
+            mocks/smp.c
+            mocks/conn.c
+            mocks/keys.c
+            mocks/kernel.c
             mocks/crypto.c
+            mocks/crypto_expects.c
+            mocks/settings.c
+            mocks/settings_expects.c
             mocks/net_buf.c
             mocks/net_buf_expects.c
             mocks/hci_core.c
