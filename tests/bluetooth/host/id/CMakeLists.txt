@@ -12,6 +12,7 @@ add_library(mocks STATIC
             mocks/conn.c
             mocks/keys.c
             mocks/kernel.c
+            mocks/kernel_expects.c
             mocks/crypto.c
             mocks/crypto_expects.c
             mocks/settings.c
