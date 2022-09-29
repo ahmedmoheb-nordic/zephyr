@@ -7,6 +7,7 @@ add_library(mocks STATIC
             mocks/addr.c
             mocks/addr_expects.c
             mocks/rpa.c
+            mocks/rpa_expects.c
             mocks/adv.c
             mocks/smp.c
             mocks/conn.c
