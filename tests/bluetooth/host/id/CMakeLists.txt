@@ -11,6 +11,7 @@ add_library(mocks STATIC
             mocks/smp.c
             mocks/conn.c
             mocks/keys.c
+            mocks/keys_expects.c
             mocks/kernel.c
             mocks/kernel_expects.c
             mocks/crypto.c
