@@ -9,6 +9,7 @@ add_library(mocks STATIC
             mocks/rpa.c
             mocks/rpa_expects.c
             mocks/adv.c
+            mocks/adv_expects.c
             mocks/smp.c
             mocks/conn.c
             mocks/keys.c
