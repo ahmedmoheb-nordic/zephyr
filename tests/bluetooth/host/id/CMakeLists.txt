@@ -4,6 +4,7 @@
 
 add_library(mocks STATIC
             mocks/scan.c
+            mocks/scan_expects.c
             mocks/addr.c
             mocks/addr_expects.c
             mocks/rpa.c
@@ -12,6 +13,7 @@ add_library(mocks STATIC
             mocks/adv_expects.c
             mocks/smp.c
             mocks/conn.c
+            mocks/conn_expects.c
             mocks/keys.c
             mocks/keys_expects.c
             mocks/kernel.c
