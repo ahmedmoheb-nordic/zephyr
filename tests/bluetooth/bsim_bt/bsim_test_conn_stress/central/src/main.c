@@ -22,10 +22,10 @@
 #define PERIPHERAL_DEVICE_NAME "Zephyr Peripheral"
 #define PERIPHERAL_DEVICE_NAME_LEN (sizeof(PERIPHERAL_DEVICE_NAME) - 1)
 
-#define TERM_PRINT(fmt, ...)   printk("\e[39m" fmt "\e[39m\n", ##__VA_ARGS__)
-#define TERM_INFO(fmt, ...)    printk("\e[94m" fmt "\e[39m\n", ##__VA_ARGS__)
-#define TERM_SUCCESS(fmt, ...) printk("\e[92m" fmt "\e[39m\n", ##__VA_ARGS__)
-#define TERM_ERR(fmt, ...)     printk("\e[91m" fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_PRINT(fmt, ...)   printk("\e[39m[Central] : " fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_INFO(fmt, ...)    printk("\e[94m[Central] : " fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_SUCCESS(fmt, ...) printk("\e[92m[Central] : " fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_ERR(fmt, ...)     printk("\e[91m[Central] : " fmt "\e[39m\n", ##__VA_ARGS__)
 
 static void start_scan(void);
 
@@ -40,12 +40,12 @@ static uint8_t notify_func(struct bt_conn *conn,
 			   const void *data, uint16_t length)
 {
 	if (!data) {
-		printk("[UNSUBSCRIBED]\n");
+		TERM_INFO("[UNSUBSCRIBED]");
 		params->value_handle = 0U;
 		return BT_GATT_ITER_STOP;
 	}
 
-	printk("[NOTIFICATION] data %p length %u\n", data, length);
+	TERM_PRINT("[NOTIFICATION] data %p length %u", data, length);
 
 	return BT_GATT_ITER_CONTINUE;
 }
@@ -57,12 +57,12 @@ static uint8_t discover_func(struct bt_conn *conn,
 	int err;
 
 	if (!attr) {
-		printk("Discover complete\n");
+		TERM_INFO("Discover complete");
 		(void)memset(params, 0, sizeof(*params));
 		return BT_GATT_ITER_STOP;
 	}
 
-	printk("[ATTRIBUTE] handle %u\n", attr->handle);
+	TERM_PRINT("[ATTRIBUTE] handle %u", attr->handle);
 
 	if (!bt_uuid_cmp(discover_params.uuid, BT_UUID_HRS)) {
 		memcpy(&uuid, BT_UUID_HRS_MEASUREMENT, sizeof(uuid));
@@ -72,7 +72,7 @@ static uint8_t discover_func(struct bt_conn *conn,
 
 		err = bt_gatt_discover(conn, &discover_params);
 		if (err) {
-			printk("Discover failed (err %d)\n", err);
+			TERM_ERR("Discover failed (err %d)", err);
 		}
 	} else if (!bt_uuid_cmp(discover_params.uuid,
 				BT_UUID_HRS_MEASUREMENT)) {
@@ -84,7 +84,7 @@ static uint8_t discover_func(struct bt_conn *conn,
 
 		err = bt_gatt_discover(conn, &discover_params);
 		if (err) {
-			printk("Discover failed (err %d)\n", err);
+			TERM_ERR("Discover failed (err %d)", err);
 		}
 	} else {
 		subscribe_params.notify = notify_func;
@@ -93,9 +93,9 @@ static uint8_t discover_func(struct bt_conn *conn,
 
 		err = bt_gatt_subscribe(conn, &subscribe_params);
 		if (err && err != -EALREADY) {
-			printk("Subscribe failed (err %d)\n", err);
+			TERM_ERR("Subscribe failed (err %d)", err);
 		} else {
-			printk("[SUBSCRIBED]\n");
+			TERM_INFO("[SUBSCRIBED]");
 		}
 
 		return BT_GATT_ITER_STOP;
@@ -108,13 +108,13 @@ static bool eir_found(struct bt_data *data, void *user_data)
 {
 	bt_addr_le_t *addr = user_data;
 
-	printk("[AD]: %u data_len %u\n", data->type, data->data_len);
+	TERM_PRINT("[AD]: %u data_len %u", data->type, data->data_len);
 
 	switch (data->type) {
 	case BT_DATA_NAME_SHORTENED:
 	case BT_DATA_NAME_COMPLETE:
-		printk("Name Tag found!\n");
-		printk("Device name : %.*s\n", data->data_len, data->data);
+		TERM_PRINT("Name Tag found!");
+		TERM_PRINT("Device name : %.*s", data->data_len, data->data);
 
 		if (!strncmp(data->data, PERIPHERAL_DEVICE_NAME, PERIPHERAL_DEVICE_NAME_LEN)) {
 			struct bt_le_conn_param *param;
@@ -181,11 +181,11 @@ static void start_scan(void)
 
 	err = bt_le_scan_start(&scan_param, device_found);
 	if (err) {
-		printk("Scanning failed to start (err %d)\n", err);
+		TERM_ERR("Scanning failed to start (err %d)", err);
 		return;
 	}
 
-	printk("Scanning successfully started\n");
+	TERM_INFO("Scanning successfully started");
 }
 
 static void connected(struct bt_conn *conn, uint8_t conn_err)
@@ -196,7 +196,7 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
 	if (conn_err) {
-		printk("Failed to connect to %s (%u)\n", addr, conn_err);
+		TERM_ERR("Failed to connect to %s (%u)", addr, conn_err);
 
 		bt_conn_unref(default_conn);
 		default_conn = NULL;
@@ -205,7 +205,7 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 		return;
 	}
 
-	printk("Connected: %s\n", addr);
+	TERM_PRINT("Connected: %s", addr);
 
 	if (conn == default_conn) {
 		memcpy(&uuid, BT_UUID_HRS, sizeof(uuid));
@@ -217,7 +217,7 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 
 		err = bt_gatt_discover(default_conn, &discover_params);
 		if (err) {
-			printk("Discover failed(err %d)\n", err);
+			TERM_ERR("Discover failed(err %d)", err);
 			return;
 		}
 	}
@@ -229,7 +229,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Disconnected: %s (reason 0x%02x)\n", addr, reason);
+	TERM_ERR("Disconnected: %s (reason 0x%02x)", addr, reason);
 
 	if (default_conn != conn) {
 		return;
@@ -253,11 +253,11 @@ void main(void)
 	err = bt_enable(NULL);
 
 	if (err) {
-		printk("Bluetooth init failed (err %d)\n", err);
+		TERM_ERR("Bluetooth init failed (err %d)", err);
 		return;
 	}
 
-	printk("Bluetooth initialized\n");
+	TERM_PRINT("Bluetooth initialized");
 
 	start_scan();
 }
