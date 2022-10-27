@@ -19,6 +19,14 @@
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/sys/byteorder.h>
 
+#define PERIPHERAL_DEVICE_NAME "Zephyr Peripheral"
+#define PERIPHERAL_DEVICE_NAME_LEN (sizeof(PERIPHERAL_DEVICE_NAME) - 1)
+
+#define TERM_PRINT(fmt, ...)   printk("\e[39m" fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_INFO(fmt, ...)    printk("\e[94m" fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_SUCCESS(fmt, ...) printk("\e[92m" fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_ERR(fmt, ...)     printk("\e[91m" fmt "\e[39m\n", ##__VA_ARGS__)
+
 static void start_scan(void);
 
 static struct bt_conn *default_conn;
@@ -99,46 +107,40 @@ static uint8_t discover_func(struct bt_conn *conn,
 static bool eir_found(struct bt_data *data, void *user_data)
 {
 	bt_addr_le_t *addr = user_data;
-	int i;
 
 	printk("[AD]: %u data_len %u\n", data->type, data->data_len);
 
 	switch (data->type) {
-	case BT_DATA_UUID16_SOME:
-	case BT_DATA_UUID16_ALL:
-		if (data->data_len % sizeof(uint16_t) != 0U) {
-			printk("AD malformed\n");
-			return true;
-		}
+	case BT_DATA_NAME_SHORTENED:
+	case BT_DATA_NAME_COMPLETE:
+		printk("Name Tag found!\n");
+		printk("Device name : %.*s\n", data->data_len, data->data);
 
-		for (i = 0; i < data->data_len; i += sizeof(uint16_t)) {
+		if (!strncmp(data->data, PERIPHERAL_DEVICE_NAME, PERIPHERAL_DEVICE_NAME_LEN)) {
 			struct bt_le_conn_param *param;
-			struct bt_uuid *uuid;
-			uint16_t u16;
 			int err;
-
-			memcpy(&u16, &data->data[i], sizeof(u16));
-			uuid = BT_UUID_DECLARE_16(sys_le16_to_cpu(u16));
-			if (bt_uuid_cmp(uuid, BT_UUID_HRS)) {
-				continue;
-			}
 
 			err = bt_le_scan_stop();
 			if (err) {
-				printk("Stop LE scan failed (err %d)\n", err);
-				continue;
+				TERM_ERR("Stop LE scan failed (err %d)", err);
+				break;
 			}
 
 			param = BT_LE_CONN_PARAM_DEFAULT;
+			TERM_INFO("Establishing a connection");
 			err = bt_conn_le_create(addr, BT_CONN_LE_CREATE_CONN,
 						param, &default_conn);
 			if (err) {
-				printk("Create conn failed (err %d)\n", err);
+				TERM_ERR("Create conn failed (err %d)", err);
 				start_scan();
+			} else {
+				TERM_SUCCESS("Connection established");
 			}
 
 			return false;
 		}
+
+		break;
 	}
 
 	return true;
@@ -150,12 +152,15 @@ static void device_found(const bt_addr_le_t *addr, int8_t rssi, uint8_t type,
 	char dev[BT_ADDR_LE_STR_LEN];
 
 	bt_addr_le_to_str(addr, dev, sizeof(dev));
-	printk("[DEVICE]: %s, AD evt type %u, AD data len %u, RSSI %i\n",
+	TERM_PRINT("------------------------------------------------------");
+	TERM_INFO("[DEVICE]: %s, AD evt type %u, AD data len %u, RSSI %i",
 	       dev, type, ad->len, rssi);
+	TERM_PRINT("------------------------------------------------------");
 
 	/* We're only interested in connectable events */
 	if (type == BT_GAP_ADV_TYPE_ADV_IND ||
-	    type == BT_GAP_ADV_TYPE_ADV_DIRECT_IND) {
+	    type == BT_GAP_ADV_TYPE_ADV_DIRECT_IND ||
+		type == BT_GAP_ADV_TYPE_SCAN_RSP) {
 		bt_data_parse(ad, eir_found, (void *)addr);
 	}
 }
