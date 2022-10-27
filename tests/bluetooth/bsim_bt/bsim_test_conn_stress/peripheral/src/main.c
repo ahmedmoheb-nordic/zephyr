@@ -27,6 +27,11 @@
 
 #include "cts.h"
 
+#define TERM_PRINT(fmt, ...)   printk("\e[39m[Peripheral] : " fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_INFO(fmt, ...)    printk("\e[94m[Peripheral] : " fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_SUCCESS(fmt, ...) printk("\e[92m[Peripheral] : " fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_ERR(fmt, ...)     printk("\e[91m[Peripheral] : " fmt "\e[39m\n", ##__VA_ARGS__)
+
 /* Custom Service Variables */
 #define BT_UUID_CUSTOM_SERVICE_VAL \
 	BT_UUID_128_ENCODE(0x12345678, 0x1234, 0x5678, 0x1234, 0x56789abcdef0)
@@ -83,12 +88,12 @@ static void vnd_ccc_cfg_changed(const struct bt_gatt_attr *attr, uint16_t value)
 static void indicate_cb(struct bt_conn *conn,
 			struct bt_gatt_indicate_params *params, uint8_t err)
 {
-	printk("Indication %s\n", err != 0U ? "fail" : "success");
+	TERM_PRINT("Indication %s", err != 0U ? "fail" : "success");
 }
 
 static void indicate_destroy(struct bt_gatt_indicate_params *params)
 {
-	printk("Indication complete\n");
+	TERM_PRINT("Indication complete");
 	indicating = 0U;
 }
 
@@ -228,7 +233,7 @@ static const struct bt_data ad[] = {
 
 void mtu_updated(struct bt_conn *conn, uint16_t tx, uint16_t rx)
 {
-	printk("Updated MTU: TX: %d RX: %d bytes\n", tx, rx);
+	TERM_INFO("Updated MTU: TX: %d RX: %d bytes", tx, rx);
 }
 
 static struct bt_gatt_cb gatt_callbacks = {
@@ -238,15 +243,15 @@ static struct bt_gatt_cb gatt_callbacks = {
 static void connected(struct bt_conn *conn, uint8_t err)
 {
 	if (err) {
-		printk("Connection failed (err 0x%02x)\n", err);
+		TERM_ERR("Connection failed (err 0x%02x)", err);
 	} else {
-		printk("Connected\n");
+		TERM_PRINT("Connected");
 	}
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
-	printk("Disconnected (reason 0x%02x)\n", reason);
+	TERM_ERR("Disconnected (reason 0x%02x)", reason);
 }
 
 static void alert_stop(void)
@@ -279,7 +284,7 @@ static void bt_ready(void)
 {
 	int err;
 
-	printk("Bluetooth initialized\n");
+	TERM_PRINT("Bluetooth initialized");
 
 	cts_init();
 
@@ -289,11 +294,11 @@ static void bt_ready(void)
 
 	err = bt_le_adv_start(BT_LE_ADV_CONN_NAME, ad, ARRAY_SIZE(ad), NULL, 0);
 	if (err) {
-		printk("Advertising failed to start (err %d)\n", err);
+		TERM_ERR("Advertising failed to start (err %d)", err);
 		return;
 	}
 
-	printk("Advertising successfully started\n");
+	TERM_SUCCESS("Advertising successfully started");
 }
 
 static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
@@ -302,7 +307,7 @@ static void auth_passkey_display(struct bt_conn *conn, unsigned int passkey)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Passkey for %s: %06u\n", addr, passkey);
+	TERM_INFO("Passkey for %s: %06u", addr, passkey);
 }
 
 static void auth_cancel(struct bt_conn *conn)
@@ -311,7 +316,7 @@ static void auth_cancel(struct bt_conn *conn)
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
-	printk("Pairing cancelled: %s\n", addr);
+	TERM_INFO("Pairing cancelled: %s", addr);
 }
 
 static struct bt_conn_auth_cb auth_cb_display = {
@@ -354,7 +359,7 @@ void main(void)
 
 	err = bt_enable(NULL);
 	if (err) {
-		printk("Bluetooth init failed (err %d)\n", err);
+		TERM_ERR("Bluetooth init failed (err %d)", err);
 		return;
 	}
 
@@ -366,7 +371,7 @@ void main(void)
 	vnd_ind_attr = bt_gatt_find_by_uuid(vnd_svc.attrs, vnd_svc.attr_count,
 					    &vnd_enc_uuid.uuid);
 	bt_uuid_to_str(&vnd_enc_uuid.uuid, str, sizeof(str));
-	printk("Indicate VND attr %p (UUID %s)\n", vnd_ind_attr, str);
+	TERM_PRINT("Indicate VND attr %p (UUID %s)", vnd_ind_attr, str);
 
 	/* Implement notification. At the moment there is no suitable way
 	 * of starting delayed work so we do it here
