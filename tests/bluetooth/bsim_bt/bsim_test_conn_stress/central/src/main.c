@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
+#include <zephyr/sys/check.h>
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/hci.h>
@@ -28,6 +29,10 @@
 #define TERM_ERR(fmt, ...)     printk("\e[91m[Central] : " fmt "\e[39m\n", ##__VA_ARGS__)
 
 static void start_scan(void);
+static int stop_scan(void);
+
+static bool volatile is_scanning;
+static uint8_t volatile conn_count;
 
 static struct bt_conn *default_conn;
 
@@ -120,9 +125,7 @@ static bool eir_found(struct bt_data *data, void *user_data)
 			struct bt_le_conn_param *param;
 			int err;
 
-			err = bt_le_scan_stop();
-			if (err) {
-				TERM_ERR("Stop LE scan failed (err %d)", err);
+			if (stop_scan()) {
 				break;
 			}
 
@@ -133,8 +136,6 @@ static bool eir_found(struct bt_data *data, void *user_data)
 			if (err) {
 				TERM_ERR("Create conn failed (err %d)", err);
 				start_scan();
-			} else {
-				TERM_SUCCESS("Connection established");
 			}
 
 			return false;
@@ -169,6 +170,10 @@ static void start_scan(void)
 {
 	int err;
 
+	CHECKIF(is_scanning == true) {
+		return;
+	}
+
 	/* Use active scanning and disable duplicate filtering to handle any
 	 * devices that might update their advertising data at runtime.
 	 */
@@ -185,7 +190,27 @@ static void start_scan(void)
 		return;
 	}
 
+	is_scanning = true;
 	TERM_INFO("Scanning successfully started");
+}
+
+static int stop_scan(void)
+{
+	int err;
+
+	CHECKIF(is_scanning == false) {
+		return -EALREADY;
+	}
+
+	err = bt_le_scan_stop();
+	if (err) {
+		TERM_ERR("Stop LE scan failed (err %d)", err);
+		return err;
+	}
+
+	is_scanning = false;
+	TERM_INFO("Scanning successfully stopped");
+	return 0;
 }
 
 static void connected(struct bt_conn *conn, uint8_t conn_err)
@@ -205,7 +230,14 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 		return;
 	}
 
-	TERM_PRINT("Connected: %s", addr);
+	TERM_SUCCESS("Connection established : %s", addr);
+
+	conn_count++;
+	if (conn_count < CONFIG_BT_MAX_CONN) {
+		start_scan();
+	}
+
+	TERM_INFO("Active connections count : %u", conn_count);
 
 	if (conn == default_conn) {
 		memcpy(&uuid, BT_UUID_HRS, sizeof(uuid));
@@ -238,7 +270,14 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	bt_conn_unref(default_conn);
 	default_conn = NULL;
 
-	start_scan();
+	if (conn_count == CONFIG_BT_MAX_CONN) {
+		__ASSERT_NO_MSG(is_scanning == false);
+		start_scan();
+	} else {
+		__ASSERT_NO_MSG(is_scanning == true);
+	}
+
+	__ASSERT_NO_MSG(conn_count < CONFIG_BT_MAX_CONN && is_scanning == true);
 }
 
 BT_CONN_CB_DEFINE(conn_callbacks) = {
