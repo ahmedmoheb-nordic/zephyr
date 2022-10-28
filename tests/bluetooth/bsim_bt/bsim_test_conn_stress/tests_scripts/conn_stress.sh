@@ -57,7 +57,10 @@ fi
 
 Execute "./${bsim_central_exe_name}" -v=${verbosity_level} -s=${simulation_id} -d=0 -rs=43
 Execute "./${bsim_peripheral_exe_name}" -v=${verbosity_level} -s=${simulation_id} -d=1 -rs=57
-Execute ./bs_2G4_phy_v1 -v=${verbosity_level} -s=${simulation_id} -D=2 -sim_length=10e6 &
+Execute "./${bsim_peripheral_exe_name}" -v=${verbosity_level} -s=${simulation_id} -d=2 -rs=31
+Execute "./${bsim_peripheral_exe_name}" -v=${verbosity_level} -s=${simulation_id} -d=3 -rs=43
+Execute "./${bsim_peripheral_exe_name}" -v=${verbosity_level} -s=${simulation_id} -d=4 -rs=17
+Execute ./bs_2G4_phy_v1 -v=${verbosity_level} -s=${simulation_id} -D=5 -sim_length=90e6 &
 
 find . -type f -name ${bsim_central_exe_name} -delete
 find . -type f -name ${bsim_peripheral_exe_name} -delete
