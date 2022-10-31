@@ -245,7 +245,10 @@ static void connected(struct bt_conn *conn, uint8_t err)
 	if (err) {
 		TERM_ERR("Connection failed (err 0x%02x)", err);
 	} else {
-		TERM_PRINT("Connected");
+		char addr[BT_ADDR_LE_STR_LEN];
+
+		bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+		TERM_SUCCESS("Connection %p established : %s", conn, addr);
 	}
 }
 

@@ -34,11 +34,23 @@ static int stop_scan(void);
 static bool volatile is_scanning;
 static uint8_t volatile conn_count;
 
-static struct bt_conn *default_conn;
+static struct bt_conn *conn_connecting;
+static struct bt_conn *conn_refs[CONFIG_BT_MAX_CONN];
 
 static struct bt_uuid_16 uuid = BT_UUID_INIT_16(0);
 static struct bt_gatt_discover_params discover_params;
 static struct bt_gatt_subscribe_params subscribe_params;
+
+static int get_conn_ref_index(struct bt_conn *conn_ref)
+{
+	for (size_t i = 0; i < ARRAY_SIZE(conn_refs); i++) {
+		if (conn_ref == conn_refs[i]) {
+			return i;
+		}
+	}
+
+	return -1;
+}
 
 static uint8_t notify_func(struct bt_conn *conn,
 			   struct bt_gatt_subscribe_params *params,
@@ -122,8 +134,13 @@ static bool eir_found(struct bt_data *data, void *user_data)
 		TERM_PRINT("Device name : %.*s", data->data_len, data->data);
 
 		if (!strncmp(data->data, PERIPHERAL_DEVICE_NAME, PERIPHERAL_DEVICE_NAME_LEN)) {
-			struct bt_le_conn_param *param;
 			int err;
+			struct bt_le_conn_param *param;
+
+			CHECKIF(conn_connecting != NULL) {
+				TERM_ERR("A connection ongoing, can't establish a new one");
+				break;
+			}
 
 			if (stop_scan()) {
 				break;
@@ -131,8 +148,8 @@ static bool eir_found(struct bt_data *data, void *user_data)
 
 			param = BT_LE_CONN_PARAM_DEFAULT;
 			TERM_INFO("Establishing a connection");
-			err = bt_conn_le_create(addr, BT_CONN_LE_CREATE_CONN,
-						param, &default_conn);
+			err = bt_conn_le_create(addr, BT_CONN_LE_CREATE_CONN, param,
+						&conn_connecting);
 			if (err) {
 				TERM_ERR("Create conn failed (err %d)", err);
 				start_scan();
@@ -223,22 +240,25 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 	if (conn_err) {
 		TERM_ERR("Failed to connect to %s (%u)", addr, conn_err);
 
-		bt_conn_unref(default_conn);
-		default_conn = NULL;
+		bt_conn_unref(conn_connecting);
+		conn_connecting = NULL;
 
 		start_scan();
 		return;
 	}
 
-	TERM_SUCCESS("Connection established : %s", addr);
+	TERM_SUCCESS("Connection %p established : %s", conn, addr);
 
-	conn_count++;
+	conn_refs[conn_count++] = conn_connecting;
 	if (conn_count < CONFIG_BT_MAX_CONN) {
 		start_scan();
 	}
 
+	conn_connecting = NULL;
+
 	TERM_INFO("Active connections count : %u", conn_count);
 
+#ifdef ENABLE_THIS
 	if (conn == default_conn) {
 		memcpy(&uuid, BT_UUID_HRS, sizeof(uuid));
 		discover_params.uuid = &uuid.uuid;
@@ -253,22 +273,25 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 			return;
 		}
 	}
+#endif
 }
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
+	int conn_index;
 	char addr[BT_ADDR_LE_STR_LEN];
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
 	TERM_ERR("Disconnected: %s (reason 0x%02x)", addr, reason);
 
-	if (default_conn != conn) {
+	conn_index = get_conn_ref_index(conn);
+	if (conn_index < 0) {
 		return;
 	}
 
-	bt_conn_unref(default_conn);
-	default_conn = NULL;
+	bt_conn_unref(conn_refs[conn_index]);
+	conn_refs[conn_index] = NULL;
 
 	if (conn_count == CONFIG_BT_MAX_CONN) {
 		__ASSERT_NO_MSG(is_scanning == false);
