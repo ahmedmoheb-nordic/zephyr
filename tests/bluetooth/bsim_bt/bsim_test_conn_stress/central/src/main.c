@@ -250,9 +250,11 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 	TERM_SUCCESS("Connection %p established : %s", conn, addr);
 
 	conn_refs[conn_count++] = conn_connecting;
+#ifdef START_DISCOVERY_FROM_CALLBACK
 	if (conn_count < CONFIG_BT_MAX_CONN) {
 		start_scan();
 	}
+#endif
 
 	conn_connecting = NULL;
 
@@ -322,4 +324,15 @@ void main(void)
 	TERM_PRINT("Bluetooth initialized");
 
 	start_scan();
+#ifndef START_DISCOVERY_FROM_CALLBACK
+	while (true) {
+		while (is_scanning == true) {
+			k_sleep(K_MSEC(10));
+		}
+		k_sleep(K_MSEC(500));
+		if (conn_count < CONFIG_BT_MAX_CONN) {
+			start_scan();
+		}
+	}
+#endif
 }
