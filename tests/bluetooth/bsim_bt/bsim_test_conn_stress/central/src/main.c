@@ -250,15 +250,25 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 	TERM_SUCCESS("Connection %p established : %s", conn, addr);
 
 	conn_refs[conn_count++] = conn_connecting;
-#ifdef START_DISCOVERY_FROM_CALLBACK
-	if (conn_count < CONFIG_BT_MAX_CONN) {
-		start_scan();
+	TERM_INFO("Active connections count : %u", conn_count);
+
+#if defined(CONFIG_BT_SMP)
+	err = bt_conn_set_security(conn, BT_SECURITY_L2);
+
+	if (!err) {
+		TERM_SUCCESS("Security level is set to : %u", BT_SECURITY_L2);
+	} else {
+		TERM_ERR("Failed to set security (%d).", err);
 	}
 #endif
 
 	conn_connecting = NULL;
 
-	TERM_INFO("Active connections count : %u", conn_count);
+#ifdef START_DISCOVERY_FROM_CALLBACK
+	if (conn_count < CONFIG_BT_MAX_CONN) {
+		start_scan();
+	}
+#endif
 
 #ifdef ENABLE_THIS
 	if (conn == default_conn) {
@@ -305,9 +315,27 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	__ASSERT_NO_MSG(conn_count < CONFIG_BT_MAX_CONN && is_scanning == true);
 }
 
+#if defined(CONFIG_BT_SMP)
+static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err)
+{
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+	if (!err) {
+		TERM_INFO("Security for %p changed: %s level %u", conn, addr, level);
+	} else {
+		TERM_ERR("Security for %p failed: %s level %u err %d", conn, addr, level, err);
+	}
+}
+#endif
+
 BT_CONN_CB_DEFINE(conn_callbacks) = {
 	.connected = connected,
 	.disconnected = disconnected,
+#if defined(CONFIG_BT_SMP)
+	.security_changed = security_changed,
+#endif
 };
 
 void main(void)
@@ -324,9 +352,10 @@ void main(void)
 	TERM_PRINT("Bluetooth initialized");
 
 	start_scan();
+
 #ifndef START_DISCOVERY_FROM_CALLBACK
 	while (true) {
-		while (is_scanning == true) {
+		while (is_scanning == true || conn_connecting != NULL) {
 			k_sleep(K_MSEC(10));
 		}
 		k_sleep(K_MSEC(500));

@@ -257,6 +257,21 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	TERM_ERR("Disconnected (reason 0x%02x)", reason);
 }
 
+#if defined(CONFIG_BT_SMP)
+static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_security_err err)
+{
+	char addr[BT_ADDR_LE_STR_LEN];
+
+	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+	if (!err) {
+		TERM_INFO("Security for %p changed: %s level %u", conn, addr, level);
+	} else {
+		TERM_ERR("Security for %p failed: %s level %u err %d", conn, addr, level, err);
+	}
+}
+#endif
+
 static void alert_stop(void)
 {
 	printk("Alert stopped\n");
@@ -275,6 +290,9 @@ static void alert_high_start(void)
 BT_CONN_CB_DEFINE(conn_callbacks) = {
 	.connected = connected,
 	.disconnected = disconnected,
+#if defined(CONFIG_BT_SMP)
+	.security_changed = security_changed,
+#endif
 };
 
 BT_IAS_CB_DEFINE(ias_callbacks) = {
