@@ -268,8 +268,7 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 	} else {
 		TERM_ERR("Failed to set security (%d).", err);
 	}
-#endif
-
+#else
 	if (conn == conn_connecting) {
 		conn_connecting = NULL;
 		atomic_clear_bit(status_flags, BT_IS_CONNECTING);
@@ -281,6 +280,7 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 #endif
 
 	}
+#endif
 
 #ifdef ENABLE_THIS
 	if (conn == default_conn) {
