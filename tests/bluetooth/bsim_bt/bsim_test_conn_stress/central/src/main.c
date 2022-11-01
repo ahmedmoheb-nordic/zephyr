@@ -26,7 +26,10 @@
 #define TERM_PRINT(fmt, ...)   printk("\e[39m[Central] : " fmt "\e[39m\n", ##__VA_ARGS__)
 #define TERM_INFO(fmt, ...)    printk("\e[94m[Central] : " fmt "\e[39m\n", ##__VA_ARGS__)
 #define TERM_SUCCESS(fmt, ...) printk("\e[92m[Central] : " fmt "\e[39m\n", ##__VA_ARGS__)
-#define TERM_ERR(fmt, ...)     printk("\e[91m[Central] : " fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_ERR(fmt, ...)                                                                         \
+	printk("\e[91m[Central] %s:%d : " fmt "\e[39m\n", __func__, __LINE__, ##__VA_ARGS__)
+#define TERM_WARN(fmt, ...)                                                                        \
+	printk("\e[93m[Central] %s:%d : " fmt "\e[39m\n", __func__, __LINE__, ##__VA_ARGS__)
 
 static void start_scan(void);
 static int stop_scan(void);
@@ -46,6 +49,17 @@ static struct bt_conn *conn_refs[CONFIG_BT_MAX_CONN];
 static struct bt_uuid_16 uuid = BT_UUID_INIT_16(0);
 static struct bt_gatt_discover_params discover_params;
 static struct bt_gatt_subscribe_params subscribe_params;
+
+static int get_empty_conn_ref_index(struct bt_conn *conn_ref)
+{
+	for (size_t i = 0; i < ARRAY_SIZE(conn_refs); i++) {
+		if (conn_refs[i] == NULL) {
+			return i;
+		}
+	}
+
+	return -1;
+}
 
 static int get_conn_ref_index(struct bt_conn *conn_ref)
 {
@@ -141,6 +155,7 @@ static bool eir_found(struct bt_data *data, void *user_data)
 
 		if (!strncmp(data->data, PERIPHERAL_DEVICE_NAME, PERIPHERAL_DEVICE_NAME_LEN)) {
 			int err;
+			char dev[BT_ADDR_LE_STR_LEN];
 			struct bt_le_conn_param *param;
 
 			if (stop_scan()) {
@@ -153,7 +168,8 @@ static bool eir_found(struct bt_data *data, void *user_data)
 			}
 
 			param = BT_LE_CONN_PARAM_DEFAULT;
-			TERM_INFO("Establishing a connection");
+			bt_addr_le_to_str(addr, dev, sizeof(dev));
+			TERM_INFO("Connecting to %s", dev);
 			err = bt_conn_le_create(addr, BT_CONN_LE_CREATE_CONN, param,
 						&conn_connecting);
 			if (err) {
@@ -240,8 +256,9 @@ static int stop_scan(void)
 
 static void connected(struct bt_conn *conn, uint8_t conn_err)
 {
-	char addr[BT_ADDR_LE_STR_LEN];
 	int err;
+	int conn_ref_index;
+	char addr[BT_ADDR_LE_STR_LEN];
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
@@ -257,8 +274,15 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 
 	TERM_SUCCESS("Connection %p established : %s", conn, addr);
 
-	conn_refs[conn_count++] = conn_connecting;
+	conn_count++;
 	TERM_INFO("Active connections count : %u", conn_count);
+
+	conn_ref_index = get_empty_conn_ref_index(conn);
+	CHECKIF(conn_ref_index < 0) {
+		TERM_WARN("Invalid connection reference index returned");
+		return;
+	}
+	conn_refs[conn_ref_index] = conn_connecting;
 
 #if defined(CONFIG_BT_SMP)
 	err = bt_conn_set_security(conn, BT_SECURITY_L2);
@@ -302,20 +326,21 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 
 static void disconnected(struct bt_conn *conn, uint8_t reason)
 {
-	int conn_index;
+	int conn_ref_index;
 	char addr[BT_ADDR_LE_STR_LEN];
 
 	bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
 
 	TERM_ERR("Disconnected: %s (reason 0x%02x)", addr, reason);
 
-	conn_index = get_conn_ref_index(conn);
-	if (conn_index < 0) {
+	conn_ref_index = get_conn_ref_index(conn);
+	CHECKIF(conn_ref_index < 0) {
+		TERM_WARN("Invalid connection reference index returned");
 		return;
 	}
 
-	bt_conn_unref(conn_refs[conn_index]);
-	conn_refs[conn_index] = NULL;
+	bt_conn_unref(conn_refs[conn_ref_index]);
+	conn_refs[conn_ref_index] = NULL;
 	conn_count--;
 }
 

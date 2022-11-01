@@ -30,7 +30,10 @@
 #define TERM_PRINT(fmt, ...)   printk("\e[39m[Peripheral] : " fmt "\e[39m\n", ##__VA_ARGS__)
 #define TERM_INFO(fmt, ...)    printk("\e[94m[Peripheral] : " fmt "\e[39m\n", ##__VA_ARGS__)
 #define TERM_SUCCESS(fmt, ...) printk("\e[92m[Peripheral] : " fmt "\e[39m\n", ##__VA_ARGS__)
-#define TERM_ERR(fmt, ...)     printk("\e[91m[Peripheral] : " fmt "\e[39m\n", ##__VA_ARGS__)
+#define TERM_ERR(fmt, ...)                                                                         \
+	printk("\e[91m[Peripheral] %s:%d : " fmt "\e[39m\n", __func__, __LINE__, ##__VA_ARGS__)
+#define TERM_WARN(fmt, ...)                                                                        \
+	printk("\e[93m[Peripheral] %s:%d : " fmt "\e[39m\n", __func__, __LINE__, ##__VA_ARGS__)
 
 /* Custom Service Variables */
 #define BT_UUID_CUSTOM_SERVICE_VAL \
