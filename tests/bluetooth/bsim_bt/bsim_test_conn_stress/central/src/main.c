@@ -31,9 +31,15 @@
 static void start_scan(void);
 static int stop_scan(void);
 
-static bool volatile is_scanning;
-static uint8_t volatile conn_count;
+enum {
+	BT_IS_SCANNING,
+	BT_IS_CONNECTING,
+	/* Total number of flags - must be at the end of the enum */
+	BT_IS_NUM_FLAGS,
+};
 
+ATOMIC_DEFINE(status_flags, BT_IS_NUM_FLAGS);
+static uint8_t volatile conn_count;
 static struct bt_conn *conn_connecting;
 static struct bt_conn *conn_refs[CONFIG_BT_MAX_CONN];
 
@@ -137,12 +143,12 @@ static bool eir_found(struct bt_data *data, void *user_data)
 			int err;
 			struct bt_le_conn_param *param;
 
-			CHECKIF(conn_connecting != NULL) {
-				TERM_ERR("A connection ongoing, can't establish a new one");
+			if (stop_scan()) {
 				break;
 			}
 
-			if (stop_scan()) {
+			CHECKIF(atomic_test_and_set_bit(status_flags, BT_IS_CONNECTING) == true) {
+				TERM_ERR("A connecting procedure is ongoing");
 				break;
 			}
 
@@ -152,7 +158,7 @@ static bool eir_found(struct bt_data *data, void *user_data)
 						&conn_connecting);
 			if (err) {
 				TERM_ERR("Create conn failed (err %d)", err);
-				start_scan();
+				atomic_clear_bit(status_flags, BT_IS_CONNECTING);
 			}
 
 			return false;
@@ -187,7 +193,8 @@ static void start_scan(void)
 {
 	int err;
 
-	CHECKIF(is_scanning == true) {
+	CHECKIF(atomic_test_and_set_bit(status_flags, BT_IS_SCANNING) == true) {
+		TERM_ERR("A scanning procedure is ongoing");
 		return;
 	}
 
@@ -204,10 +211,10 @@ static void start_scan(void)
 	err = bt_le_scan_start(&scan_param, device_found);
 	if (err) {
 		TERM_ERR("Scanning failed to start (err %d)", err);
+		atomic_clear_bit(status_flags, BT_IS_SCANNING);
 		return;
 	}
 
-	is_scanning = true;
 	TERM_INFO("Scanning successfully started");
 }
 
@@ -215,7 +222,8 @@ static int stop_scan(void)
 {
 	int err;
 
-	CHECKIF(is_scanning == false) {
+	CHECKIF(atomic_test_bit(status_flags, BT_IS_SCANNING) == false) {
+		TERM_ERR("No scanning procedure is ongoing");
 		return -EALREADY;
 	}
 
@@ -225,7 +233,7 @@ static int stop_scan(void)
 		return err;
 	}
 
-	is_scanning = false;
+	atomic_clear_bit(status_flags, BT_IS_SCANNING);
 	TERM_INFO("Scanning successfully stopped");
 	return 0;
 }
@@ -242,8 +250,8 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 
 		bt_conn_unref(conn_connecting);
 		conn_connecting = NULL;
+		atomic_clear_bit(status_flags, BT_IS_CONNECTING);
 
-		start_scan();
 		return;
 	}
 
@@ -262,13 +270,17 @@ static void connected(struct bt_conn *conn, uint8_t conn_err)
 	}
 #endif
 
-	conn_connecting = NULL;
+	if (conn == conn_connecting) {
+		conn_connecting = NULL;
+		atomic_clear_bit(status_flags, BT_IS_CONNECTING);
 
-#ifdef START_DISCOVERY_FROM_CALLBACK
+#if defined(START_DISCOVERY_FROM_CALLBACK)
 	if (conn_count < CONFIG_BT_MAX_CONN) {
 		start_scan();
 	}
 #endif
+
+	}
 
 #ifdef ENABLE_THIS
 	if (conn == default_conn) {
@@ -304,15 +316,7 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 
 	bt_conn_unref(conn_refs[conn_index]);
 	conn_refs[conn_index] = NULL;
-
-	if (conn_count == CONFIG_BT_MAX_CONN) {
-		__ASSERT_NO_MSG(is_scanning == false);
-		start_scan();
-	} else {
-		__ASSERT_NO_MSG(is_scanning == true);
-	}
-
-	__ASSERT_NO_MSG(conn_count < CONFIG_BT_MAX_CONN && is_scanning == true);
+	conn_count--;
 }
 
 #if defined(CONFIG_BT_SMP)
@@ -326,6 +330,11 @@ static void security_changed(struct bt_conn *conn, bt_security_t level, enum bt_
 		TERM_INFO("Security for %p changed: %s level %u", conn, addr, level);
 	} else {
 		TERM_ERR("Security for %p failed: %s level %u err %d", conn, addr, level, err);
+	}
+
+	if (conn == conn_connecting) {
+		conn_connecting = NULL;
+		atomic_clear_bit(status_flags, BT_IS_CONNECTING);
 	}
 }
 #endif
@@ -353,14 +362,17 @@ void main(void)
 
 	start_scan();
 
-#ifndef START_DISCOVERY_FROM_CALLBACK
+#if !defined(START_DISCOVERY_FROM_CALLBACK)
 	while (true) {
-		while (is_scanning == true || conn_connecting != NULL) {
+		while (atomic_test_bit(status_flags, BT_IS_SCANNING) == true ||
+		       atomic_test_bit(status_flags, BT_IS_CONNECTING) == true) {
 			k_sleep(K_MSEC(10));
 		}
 		k_sleep(K_MSEC(500));
 		if (conn_count < CONFIG_BT_MAX_CONN) {
 			start_scan();
+		} else {
+			k_sleep(K_MSEC(10));
 		}
 	}
 #endif
